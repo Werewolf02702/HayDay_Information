@@ -1,0 +1,455 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Справочник Производства</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;700;900&display=swap');
+
+        body {
+            font-family: 'Nunito', sans-serif;
+            background-color: #f0e4d7;
+            color: #5d4037;
+            opacity: 0;
+            animation: fadeInPage 0.5s ease-in forwards;
+            overflow-x: hidden;
+        }
+
+        @keyframes fadeInPage {
+            to { opacity: 1; }
+        }
+
+        .farm-card {
+            transition: transform 0.2s, box-shadow 0.2s;
+            cursor: pointer;
+            border: 4px solid #d7ccc8;
+            animation: cardSlideIn 0.4s ease-out backwards;
+        }
+
+        @keyframes cardSlideIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .farm-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+            border-color: #8d6e63;
+        }
+
+        #modal, #sub-modal {
+            display: none; 
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.75);
+            z-index: 100;
+            backdrop-filter: blur(4px);
+            align-items: center;
+            justify-content: center;
+            padding: 10px;
+        }
+
+        #sub-modal { z-index: 110; background: rgba(0,0,0,0.5); }
+
+        .modal-content {
+            width: 100%;
+            max-height: 90vh;
+            overflow-y: auto;
+            transform: scale(0.9);
+            opacity: 0;
+            transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+            -webkit-overflow-scrolling: touch;
+        }
+
+        .modal.active .modal-content {
+            transform: scale(1);
+            opacity: 1;
+        }
+
+        .item-row {
+            border-bottom: 1px solid #f3e8df;
+        }
+
+        .item-row:last-child {
+            border-bottom: none;
+        }
+
+        .stat-badge {
+            display: inline-flex;
+            align-items: center;
+            padding: 2px 8px;
+            border-radius: 9999px;
+            font-size: 0.7rem;
+            font-weight: bold;
+            margin: 2px;
+            white-space: nowrap;
+        }
+
+        @media (min-width: 640px) {
+            .stat-badge { font-size: 0.75rem; }
+        }
+
+        .badge-lvl { background: #e1f5fe; color: #0288d1; }
+        .badge-coin { background: #fff9c4; color: #fbc02d; }
+        .badge-time { background: #efebe9; color: #5d4037; }
+        .badge-star { background: #fff3e0; color: #ef6c00; }
+        .badge-extra { background: #f3e5f5; color: #7b1fa2; }
+        
+        .ingredient {
+            font-size: 0.75rem;
+            background: #f1f8e9;
+            color: #33691e;
+            padding: 4px 10px;
+            border-radius: 8px;
+            margin: 3px;
+            display: inline-block;
+            cursor: pointer;
+            border: 1px solid #dcedc8;
+            transition: all 0.2s;
+            touch-action: manipulation;
+        }
+
+        .ingredient:hover {
+            background: #dcedc8;
+            transform: scale(1.05);
+        }
+
+        #search-input:focus {
+            outline: none;
+            border-color: #8d6e63;
+            box-shadow: 0 0 0 3px rgba(141, 110, 99, 0.2);
+        }
+
+        .lang-btn {
+            padding: 6px 14px;
+            border-radius: 10px;
+            font-weight: bold;
+            transition: all 0.2s;
+            border: 2px solid transparent;
+            font-size: 0.85rem;
+        }
+
+        .lang-btn.active {
+            background: #8d6e63;
+            color: white;
+            border-color: #5d4037;
+        }
+    </style>
+</head>
+<body class="p-4 md:p-8">
+
+    <!-- Переключатель языков -->
+    <div class="fixed top-4 right-4 z-[120] bg-white/90 backdrop-blur p-1 rounded-xl shadow-lg flex gap-1 border-2 border-amber-100">
+        <button onclick="changeLang('ru')" id="btn-ru" class="lang-btn active">RU</button>
+        <button onclick="changeLang('en')" id="btn-en" class="lang-btn">EN</button>
+        <button onclick="changeLang('uk')" id="btn-uk" class="lang-btn">UA</button>
+    </div>
+
+    <header class="text-center mb-6 pt-12 md:pt-0">
+        <h1 id="ui-title" class="text-3xl md:text-4xl font-black text-amber-900 mb-2 uppercase tracking-tighter">Справочник Фермера</h1>
+        <p id="ui-subtitle" class="text-amber-700 text-sm md:text-base">Все рецепты и производство в одном месте</p>
+    </header>
+
+    <div class="max-w-md mx-auto mb-8 relative px-2">
+        <input 
+            type="text" 
+            id="search-input" 
+            placeholder="Поиск здания или товара..." 
+            class="w-full p-4 pl-12 rounded-2xl border-2 border-amber-200 bg-white shadow-sm transition-all text-sm md:text-base"
+            oninput="handleSearch()"
+        >
+        <div class="absolute left-6 top-1/2 -translate-y-1/2 text-amber-400">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+            </svg>
+        </div>
+    </div>
+
+    <div id="buildings-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6"></div>
+
+    <!-- Модальное окно здания -->
+    <div id="modal" class="modal" onclick="closeModal(event)">
+        <div class="modal-content bg-white max-w-2xl rounded-3xl shadow-2xl p-4 md:p-8 relative" onclick="event.stopPropagation()">
+            <button onclick="closeModal()" class="absolute top-4 right-4 text-gray-400 hover:text-gray-600 text-3xl font-bold p-2">&times;</button>
+            <div id="modal-body"></div>
+        </div>
+    </div>
+
+    <!-- Модальное окно ингредиента -->
+    <div id="sub-modal" class="modal" onclick="closeSubModal()">
+        <div class="modal-content bg-amber-50 max-w-xs rounded-3xl shadow-2xl p-6 relative text-center border-4 border-white" onclick="event.stopPropagation()">
+            <div id="sub-modal-body"></div>
+        </div>
+    </div>
+
+    <script>
+        let currentLang = 'ru';
+
+        const i18n = {
+            ru: {
+                title: "Справочник Фермера",
+                subtitle: "Все рецепты и производство в одном месте",
+                search: "Поиск здания или товара...",
+                lvl: "Ур.",
+                price: "Цена",
+                build: "Постройка",
+                exp: "Опыт",
+                time: "Время",
+                extra: "Инфо",
+                empty: "Ничего не найдено 🚜",
+                close: "ОК",
+                products: "Продукция",
+                ing_details: "Детали ингредиента"
+            },
+            en: {
+                title: "Farmer's Handbook",
+                subtitle: "All recipes and production in one place",
+                search: "Search building or item...",
+                lvl: "Lvl.",
+                price: "Price",
+                build: "Build",
+                exp: "Exp",
+                time: "Time",
+                extra: "Info",
+                empty: "Nothing found 🚜",
+                close: "OK",
+                products: "Products",
+                ing_details: "Ingredient Details"
+            },
+            uk: {
+                title: "Довідник Фермера",
+                subtitle: "Всі рецепти та виробництво в одному місці",
+                search: "Пошук будівлі або товару...",
+                lvl: "Рів.",
+                price: "Ціна",
+                build: "Будівництво",
+                exp: "Досвід",
+                time: "Час",
+                extra: "Інфо",
+                empty: "Нічого не знайдено 🚜",
+                close: "OK",
+                products: "Продукція",
+                ing_details: "Деталі інгредієнта"
+            }
+        };
+
+        const rawBuildings = [
+            { id: 1, ru: "Пекарня", en: "Bakery", uk: "Пекарня", lvl: 2, price: 20, time: "10с", exp: 3, extra: "3х3, 2 слота, ускор: 1💎", icon: "🥖" },
+            { id: 2, ru: "Дробилка (Кормозавод)", en: "Feed Mill", uk: "Дробарка", lvl: "3 / 12", price: "5 / 3200", time: "40с", exp: 4, extra: "Делает корм", icon: "🚜" },
+            { id: 3, ru: "Молокозавод", en: "Dairy Press", uk: "Молокозавод", lvl: 6, price: 50, time: "2ч", exp: 8, extra: "Сливки, масло, сыр", icon: "🧀" },
+            { id: 4, ru: "Сахарный завод", en: "Sugar Mill", uk: "Цукровий завод", lvl: "7 / 76", price: "350 / 200k", time: "6ч", exp: 12, extra: "Сахар и сироп", icon: "🍬" },
+            { id: 5, ru: "Попкорница", en: "Popcorn Pot", uk: "Попкорниця", lvl: 8, price: 650, time: "8ч", exp: 14, extra: "Разные вкусы", icon: "🍿" },
+            { id: 6, ru: "Гриль", en: "BBQ Grill", uk: "Гриль", lvl: 9, price: 730, time: "8ч", exp: 14, extra: "Блины, бекон, рыба", icon: "🍳" },
+            { id: 7, ru: "Печь для пирогов", en: "Pie Oven", uk: "Піч для пирогів", lvl: 14, price: 2200, time: "12ч", exp: 17, extra: "Тыквенный, яблочный...", icon: "🥧" },
+            { id: 8, ru: "Ткацкий станок", en: "Loom", uk: "Ткацький станок", lvl: 17, price: 3200, time: "1д", exp: 24, extra: "Свитера, шапки", icon: "🧶" },
+            { id: 9, ru: "Швейная машина", en: "Sewing Machine", uk: "Швейна машина", lvl: 19, price: 4500, time: "20ч", exp: 24, extra: "Платья, штаны", icon: "👗" },
+            { id: 10, ru: "Печь для тортов", en: "Cake Oven", uk: "Піч для тортів", lvl: 21, price: 12100, time: "1д", exp: 24, extra: "Красный бархат...", icon: "🎂" },
+            { id: 11, ru: "Плавильня", en: "Smelter", uk: "Плавильня", lvl: 24, price: "12500 - 50500", time: "18ч", exp: 21, extra: "1я:12.5k, 2я:22k, 3я:31.5k, 4я:41k, 5я:50.5k", icon: "🔥" },
+            { id: 12, ru: "Соковыжималка", en: "Juice Press", uk: "Соковитискач", lvl: 26, price: 31000, time: "1д 8ч", exp: 27, extra: "Свежие соки", icon: "🍹" },
+            { id: 13, ru: "Станок для приманок", en: "Lure Workbench", uk: "Верстат для приманок", lvl: 27, price: 0, time: "Построено", exp: 0, extra: "Рыболовная зона", icon: "🎣" },
+            { id: 14, ru: "Мороженица", en: "Ice Cream Maker", uk: "Морозиво", lvl: 29, price: 38000, time: "1д 8ч", exp: 27, extra: "Ванильное, вишневое", icon: "🍦" },
+            { id: 15, ru: "Вязальщик сетей", en: "Net Maker", uk: "В'язальник сіток", lvl: 30, price: 28000, time: "2д", exp: 32, extra: "Для озера", icon: "🕸️" },
+            { id: 16, ru: "Вареньеварка", en: "Jam Maker", uk: "Варенняварка", lvl: 35, price: 59000, time: "1д 12ч", exp: 28, extra: "Долгое хранение", icon: "🍓" },
+            { id: 17, ru: "Ювелир", en: "Jeweler", uk: "Ювелір", lvl: 38, price: 68000, time: "1д 12ч", exp: 28, extra: "Кольца, ожерелья", icon: "💍" },
+            { id: 18, ru: "Медогонка", en: "Honey Extractor", uk: "Медогонка", lvl: 39, price: 35000, time: "1д", exp: 24, extra: "Мед и воск", icon: "🍯" },
+            { id: 19, ru: "Кофейный киоск", en: "Coffee Kiosk", uk: "Кавовий кіоск", lvl: 42, price: 75000, time: "1д 11ч", exp: 35, extra: "Латте, Мокко", icon: "☕" },
+            { id: 20, ru: "Суповая кухня", en: "Soup Kitchen", uk: "Супова кухня", lvl: 46, price: 115000, time: "1д 12ч", exp: 28, extra: "Горячие супы", icon: "🍲" },
+            { id: 21, ru: "Свечник", en: "Candle Maker", uk: "Свічник", lvl: 48, price: 118000, time: "1д 14ч", exp: 24, extra: "Арома свечи", icon: "🕯️" },
+            { id: 22, ru: "Цветочный магазин", en: "Flower Shop", uk: "Квітковий магазин", lvl: 49, price: 120000, time: "1д 16ч", exp: 30, extra: "Букеты", icon: "💐" },
+            { id: 23, ru: "Конфетный автомат", en: "Candy Machine", uk: "Цукерковий автомат", lvl: 51, price: 120000, time: "1д", exp: 27, extra: "Сладости", icon: "🍭" },
+            { id: 24, ru: "Соусоварня", en: "Sauce Maker", uk: "Соусоварня", lvl: 54, price: 135000, time: "1д 16ч", exp: 30, extra: "Майонез, соус", icon: "🍶" },
+            { id: 25, ru: "Суши-бар", en: "Sushi Bar", uk: "Суші-бар", lvl: 56, price: 150000, time: "1д 20ч", exp: 38, extra: "Нигири, роллы", icon: "🍣" },
+            { id: 26, ru: "Салатный бар", en: "Salad Bar", uk: "Салатний бар", lvl: 58, price: 165000, time: "2д", exp: 32, extra: "Овощные салаты", icon: "🥗" },
+            { id: 27, ru: "Бутербродная", en: "Sandwich Bar", uk: "Бутербродна", lvl: 61, price: 180000, time: "2д 4ч", exp: 34, extra: "Тосты, панини", icon: "🥪" },
+            { id: 28, ru: "Смузи-машина", en: "Smoothie Mixer", uk: "Смузі-машина", lvl: 64, price: 220000, time: "3д", exp: 39, extra: "Ягодные миксы", icon: "🥤" },
+            { id: 29, ru: "Машинка для лапши", en: "Pasta Maker", uk: "Машинка для локшини", lvl: 67, price: 400000, time: "3д 7ч", exp: 43, extra: "Лазанья, гноччи", icon: "🍝" },
+            { id: 30, ru: "Лаборатория масел", en: "Preservation Station", uk: "Лабораторія олій", lvl: 68, price: 85000, time: "3д 8ч", exp: 44, extra: "Фруктовые заготовки", icon: "🥫" },
+            { id: 31, ru: "Вок-кухня", en: "Wok Kitchen", uk: "Вок-кухня", lvl: 69, price: 350000, time: "3д 8ч", exp: 41, extra: "Стир-фрай", icon: "🍱" },
+            { id: 32, ru: "Шляпник", en: "Hat Maker", uk: "Капелюшник", lvl: 70, price: 260000, time: "3д 4ч", exp: 40, extra: "Цилиндры, панамы", icon: "🎩" },
+            { id: 33, ru: "Макаронная кухня", en: "Pasta Kitchen", uk: "Макаронна кухня", lvl: 72, price: 550000, time: "3д 12ч", exp: 42, extra: "Фузилли, равиоли", icon: "🥟" },
+            { id: 34, ru: "Киоск хот-догов", en: "Hot Dog Stand", uk: "Кіоск хот-догів", lvl: 75, price: 650000, time: "3д 16ч", exp: 41, extra: "Разные сосиски", icon: "🌭" },
+            { id: 35, ru: "Пончиковая", en: "Donut Maker", uk: "Пончикова", lvl: 76, price: 680000, time: "3д 18ч", exp: 42, extra: "Глазированные пончики", icon: "🍩" },
+            { id: 36, ru: "Тако-кухня", en: "Taco Kitchen", uk: "Тако-кухня", lvl: 77, price: 700000, time: "3д 18ч", exp: 43, extra: "Острая еда", icon: "🌮" },
+            { id: 37, ru: "Омлетница", en: "Omelet Station", uk: "Омлетниця", lvl: 77, price: 600000, time: "3д 8ч", exp: 41, extra: "Завтраки", icon: "🍳" },
+            { id: 38, ru: "Чайная", en: "Tea Stand", uk: "Чайна", lvl: 80, price: 750000, time: "3д 23ч", exp: 44, extra: "Зеленый, черный чай", icon: "🍵" },
+            { id: 39, ru: "Фондюшница", en: "Fondue Pot", uk: "Фондюшниця", lvl: 81, price: 800000, time: "4д", exp: 44, extra: "Сырное, шоколадное", icon: "🫕" },
+            { id: 40, ru: "Мыловарня", en: "Bath Kiosk", uk: "Миловарня", lvl: 84, price: 850000, time: "4д", exp: 44, extra: "Мыло, лосьоны", icon: "🧼" },
+            { id: 41, ru: "Фритюрница", en: "Deep Fryer", uk: "Фритюрниця", lvl: 87, price: 900000, time: "4д", exp: 44, extra: "Картошка фри", icon: "🍟" },
+            { id: 42, ru: "Консервный завод", en: "Stew Pot", uk: "Консервний завод", lvl: 91, price: 950000, time: "4д", exp: 44, extra: "Тушенка", icon: "🥩" },
+            { id: 43, ru: "Гончарная печь", en: "Pottery Studio", uk: "Гончарна піч", lvl: 94, price: 1000000, time: "4д", exp: 46, extra: "Вазы, кружки", icon: "🏺" },
+            { id: 44, ru: "Магазин ириса", en: "Fudge Shop", uk: "Магазин ірису", lvl: 99, price: 1050000, time: "4д", exp: 44, extra: "Ириски", icon: "🍫" },
+            { id: 45, ru: "Йогуртница", en: "Yogurt Maker", uk: "Йогуртниця", lvl: 103, price: 1100000, time: "4д", exp: 44, extra: "Фруктовый йогурт", icon: "🍨" },
+            { id: 46, ru: "Рагушница", en: "Stew Maker", uk: "Рагушниця", lvl: 106, price: 1150000, time: "4д", exp: 44, extra: "Мясное рагу", icon: "🥘" },
+            { id: 47, ru: "Кондитерская", en: "Cupcake Maker", uk: "Кондитерська", lvl: 109, price: 1200000, time: "4д", exp: 44, extra: "Капкейки", icon: "🧁" },
+            { id: 48, ru: "Парфюмерная", en: "Perfume Maker", uk: "Парфумерна", lvl: 110, price: 1000000, time: "4д", exp: 44, extra: "Духи", icon: "🧪" },
+            { id: 49, ru: "Вафельница", en: "Waffle Maker", uk: "Вафельниця", lvl: 114, price: 1250000, time: "4д", exp: 44, extra: "Бельгийские вафли", icon: "🧇" },
+            { id: 50, ru: "Кашеварня", en: "Porridge Maker", uk: "Кашеварня", lvl: 119, price: 1300000, time: "4д", exp: 44, extra: "Здоровый завтрак", icon: "🥣" },
+            { id: 51, ru: "Милкшейк-бар", en: "Milkshake Bar", uk: "Мілкшейк-бар", lvl: 124, price: 1350000, time: "4д", exp: 44, extra: "Коктейли", icon: "🥤" }
+        ];
+
+        // База продуктов (пример, можно дополнять)
+        const products = {
+            1: [ // Bakery
+                { name: {ru: "Хлеб", en: "Bread", uk: "Хліб"}, lvl: 2, price: 21, diamonds: 1, exp: 3, ing: ["3 пшеницы"] },
+                { name: {ru: "Пицца", en: "Pizza", uk: "Піца"}, lvl: 33, price: 190, diamonds: 3, exp: 23, ing: ["2 пшеницы", "1 помидор", "1 сыр"] },
+                { name: {ru: "", en: "Pizza", uk: "Піца"}, lvl: 33, price: 190, diamonds: 3, exp: 23, ing: ["2 пшеницы", "1 помидор", "1 сыр"] }
+            ]
+        };
+
+        const resources = {
+            ru: {
+                "пшеницы": { lvl: 1, price: 3, time: "2 мин", exp: 1, icon: "🌾", name: "Пшеница" },
+                "помидор": { lvl: 30, price: 13, time: "6 ч", exp: 12, icon: "🍅", name: "Помидор" },
+                "сыр": { lvl: 12, price: 122, time: "1 ч", exp: 15, icon: "🧀", name: "Сыр" }
+            },
+            en: {
+                "wheat": { lvl: 1, price: 3, time: "2 min", exp: 1, icon: "🌾", name: "Wheat" }
+            },
+            uk: {
+                "пшениці": { lvl: 1, price: 3, time: "2 хв", exp: 1, icon: "🌾", name: "Пшениця" }
+            }
+        };
+
+        function changeLang(lang) {
+            currentLang = lang;
+            document.querySelectorAll('.lang-btn').forEach(b => b.classList.remove('active'));
+            document.getElementById(`btn-${lang}`).classList.add('active');
+            
+            document.getElementById('ui-title').innerText = i18n[lang].title;
+            document.getElementById('ui-subtitle').innerText = i18n[lang].subtitle;
+            document.getElementById('search-input').placeholder = i18n[lang].search;
+            
+            handleSearch();
+        }
+
+        function renderBuildings(list) {
+            const grid = document.getElementById('buildings-grid');
+            grid.innerHTML = '';
+            
+            if (list.length === 0) {
+                grid.innerHTML = `<div class="col-span-full text-center py-10 text-amber-800 font-bold">${i18n[currentLang].empty}</div>`;
+                return;
+            }
+
+            list.forEach((b) => {
+                const card = document.createElement('div');
+                card.className = "farm-card bg-white rounded-3xl p-5 flex flex-col items-center text-center shadow-sm";
+                card.onclick = () => openBuilding(b.id);
+                card.innerHTML = `
+                    <div class="text-5xl mb-3">${b.icon}</div>
+                    <h2 class="text-lg font-black mb-1 line-clamp-1">${b[currentLang]}</h2>
+                    <div class="flex flex-wrap justify-center gap-1 mt-1">
+                        <span class="stat-badge badge-lvl">${i18n[currentLang].lvl} ${b.lvl}</span>
+                        <span class="stat-badge badge-coin">${b.price} 💰</span>
+                    </div>
+                `;
+                grid.appendChild(card);
+            });
+        }
+
+        function handleSearch() {
+            const query = document.getElementById('search-input').value.toLowerCase();
+            const filtered = rawBuildings.filter(b => 
+                b.ru.toLowerCase().includes(query) || 
+                b.en.toLowerCase().includes(query) || 
+                b.uk.toLowerCase().includes(query)
+            );
+            renderBuildings(filtered);
+        }
+
+        function openBuilding(id) {
+            const b = rawBuildings.find(x => x.id === id);
+            const modal = document.getElementById('modal');
+            const modalBody = document.getElementById('modal-body');
+            
+            const prodList = products[id] || [];
+
+            modalBody.innerHTML = `
+                <div class="flex items-center gap-4 mb-4 border-b-2 border-amber-100 pb-4">
+                    <div class="text-5xl">${b.icon}</div>
+                    <div>
+                        <h2 class="text-2xl font-black text-amber-900">${b[currentLang]}</h2>
+                        <div class="flex flex-wrap gap-2 mt-1">
+                            <span class="stat-badge badge-time">⏱ ${b.time}</span>
+                            <span class="stat-badge badge-extra">ℹ️ ${b.extra}</span>
+                        </div>
+                    </div>
+                </div>
+                <h3 class="font-bold text-amber-800 mb-3">${i18n[currentLang].products}</h3>
+                <div class="space-y-3">
+                    ${prodList.length > 0 ? prodList.map(item => `
+                        <div class="item-row pb-3">
+                            <div class="flex flex-col gap-1">
+                                <div class="flex justify-between">
+                                    <span class="font-bold text-amber-900">${item.name[currentLang]}</span>
+                                    <span class="stat-badge badge-coin">${item.price} 💰</span>
+                                </div>
+                                <div class="flex flex-wrap gap-1 text-[10px]">
+                                    <span class="stat-badge badge-lvl">Lvl ${item.lvl}</span>
+                                    <span class="stat-badge badge-extra">💎 ${item.diamonds}</span>
+                                    <span class="stat-badge badge-lvl">✨ ${item.exp}</span>
+                                </div>
+                                <div class="flex flex-wrap gap-1 mt-1">
+                                    ${item.ing.map(ing => `<span class="ingredient" onclick="showIngredientInfo('${ing}')">${ing}</span>`).join('')}
+                                </div>
+                            </div>
+                        </div>
+                    `).join('') : `<p class="text-sm text-amber-500 italic">... (Продукция скоро будет добавлена)</p>`}
+                </div>
+            `;
+            modal.style.display = 'flex';
+            setTimeout(() => modal.classList.add('active'), 10);
+            document.body.style.overflow = 'hidden';
+        }
+
+        function showIngredientInfo(ingString) {
+            const subModal = document.getElementById('sub-modal');
+            const subBody = document.getElementById('sub-modal-body');
+            
+            const parts = ingString.toLowerCase().trim().split(' ');
+            let key = parts.length > 1 ? parts.slice(1).join(' ') : parts[0];
+            
+            let res = resources[currentLang][key] || resources['ru'][key];
+
+            if (res) {
+                subBody.innerHTML = `
+                    <div class="text-5xl mb-2">${res.icon}</div>
+                    <h4 class="text-xl font-black text-amber-900 mb-3">${res.name}</h4>
+                    <div class="space-y-1 text-sm text-left">
+                        <div class="flex justify-between p-2 bg-white rounded-lg"><span>${i18n[currentLang].lvl}:</span> <b>${res.lvl}</b></div>
+                        <div class="flex justify-between p-2 bg-white rounded-lg"><span>${i18n[currentLang].price}:</span> <b>${res.price} 💰</b></div>
+                        <div class="flex justify-between p-2 bg-white rounded-lg"><span>${i18n[currentLang].time}:</span> <b>${res.time}</b></div>
+                        <div class="flex justify-between p-2 bg-white rounded-lg"><span>${i18n[currentLang].exp}:</span> <b>${res.exp} ✨</b></div>
+                    </div>
+                    <button onclick="closeSubModal()" class="mt-4 w-full bg-amber-600 text-white py-3 rounded-2xl font-bold">${i18n[currentLang].close}</button>
+                `;
+            } else {
+                subBody.innerHTML = `<div class="p-4"><p class="font-bold">${ingString}</p><p class="text-sm text-amber-600">Детали скоро...</p></div><button onclick="closeSubModal()" class="mt-2 w-full bg-amber-600 text-white py-2 rounded-xl">OK</button>`;
+            }
+
+            subModal.style.display = 'flex';
+            setTimeout(() => subModal.classList.add('active'), 10);
+        }
+
+        function closeModal(e) {
+            if (e && e.target !== document.getElementById('modal')) return;
+            const modal = document.getElementById('modal');
+            modal.classList.remove('active');
+            setTimeout(() => { modal.style.display = 'none'; document.body.style.overflow = 'auto'; }, 300);
+        }
+
+        function closeSubModal() {
+            const subModal = document.getElementById('sub-modal');
+            subModal.classList.remove('active');
+            setTimeout(() => { subModal.style.display = 'none'; }, 300);
+        }
+
+        window.onload = () => changeLang('ru');
+    </script>
+</body>
+</html>
