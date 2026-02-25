@@ -1,0 +1,17 @@
+{
+    "en": {
+        "title": "Farmer's Handbook",
+        "subtitle": "All recipes and production in one place",
+        "search": "Search building or item...",
+        "lvl": "Lvl.",
+        "price": "Price",
+        "build": "Build",
+        "exp": "Exp",
+        "time": "Time",
+        "extra": "Info",
+        "empty": "Nothing found 🚜",
+        "close": "OK",
+        "products": "Products",
+        "ing_details": "Ingredient Details"
+    }
+}
