@@ -12,6 +12,13 @@
         "empty": "Nothing found 🚜",
         "close": "OK",
         "products": "Products",
-        "ing_details": "Ingredient Details"
+        
+        "ing_details": "Ingredient Details",
+        "langs": {
+            "ru": "Russian",
+            "en": "English",
+            "uk": "Ukrainian"
+        }
     }
+    
 }
