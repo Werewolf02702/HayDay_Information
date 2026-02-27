@@ -347,6 +347,19 @@ function closeSubModal() {
 // простой информационный модал
 function showInfo() {
     const modal = document.getElementById('info-modal');
+    const body = document.getElementById('info-modal-body');
+    // наполняем локализованными строками
+    body.innerHTML = `
+        <p>${i18n[currentLang].info_title || ''}</p>
+        <ul class="list-disc pl-5 text-sm">
+            <li>${i18n[currentLang].info_exp || ''}</li>
+            <li>${i18n[currentLang].info_coin || ''}</li>
+            <li>${i18n[currentLang].info_time || ''}</li>
+            <li>${i18n[currentLang].info_dia || ''}</li>
+            <li>${i18n[currentLang].info_star || ''}</li>
+            <li>${i18n[currentLang].info_rep || ''}</li>
+        </ul>
+    `;
     modal.style.display = 'flex';
     setTimeout(() => modal.classList.add('active'), 10);
 }
