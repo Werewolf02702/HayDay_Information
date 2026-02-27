@@ -18,7 +18,14 @@
             "ru": "Russian",
             "en": "English",
             "uk": "Ukrainian"
-        }
+        },
+        "info_title": "Information",
+        "info_exp": "✨ — experience",
+        "info_coin": "💰 — coins",
+        "info_time": "⏱ — time",
+        "info_dia": "💎 — diamonds",
+        "info_star": "★ — stars",
+        "info_rep": "🏅 — reputation"
     }
     
 }
