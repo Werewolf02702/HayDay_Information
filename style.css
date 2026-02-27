@@ -84,6 +84,20 @@
             border-bottom: none;
         }
 
+        /* info modal appears near its button at top-left */
+        #info-modal {
+            align-items: flex-start;
+            justify-content: flex-start;
+        }
+        #info-modal .modal-content {
+            position: fixed;
+            top: 4rem;
+            left: 4rem;
+            width: auto;
+            max-width: 16rem;
+            transform: scale(0.9);
+        }
+
         .stat-badge {
             display: inline-flex;
             align-items: center;
